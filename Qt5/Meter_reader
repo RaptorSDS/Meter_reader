@@ -1,0 +1,336 @@
+import sys
+import serial
+import time
+from smllib import SmlStreamReader
+from datetime import datetime
+from collections import deque
+from pathlib import Path
+import serial.tools.list_ports
+from smllib import SmlFrame
+# Changed imports to use PyQt5 directly
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QGridLayout, QGroupBox,
+    QLabel, QComboBox, QPushButton, QVBoxLayout, QTableWidget,
+    QTableWidgetItem, QMessageBox, QFileDialog
+)
+from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtGui import QColor
+
+class SmartMeterReader(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Smart Meter Ausleser")
+        self.setMinimumSize(1000, 800)
+        
+        # Important OBIS codes for highlighting
+        self.highlight_codes = ['1.8.0', '2.8.0', 'C.1.0', '0.2.0']
+        
+        # Initialize SML reader
+        self.sml_reader = SmlStreamReader()
+        self.serial_connection = None
+        self.read_timer = QTimer()
+        self.read_timer.timeout.connect(self.read_serial_data)
+        
+        # Data storage for the last minute (60 measurements at 1s interval)
+        self.measurement_history = deque(maxlen=60)
+        
+        # GUI Setup
+        main_widget = QWidget()
+        self.setCentralWidget(main_widget)
+        layout = QGridLayout(main_widget)
+        
+        # Connection settings
+        connection_group = self.create_connection_group()
+        
+        # Measurement settings
+        measurement_group = self.create_measurement_group()
+        
+        # Info button
+        info_button = QPushButton("?")
+        info_button.setFixedSize(30, 30)
+        info_button.clicked.connect(self.show_info)
+        
+        # Measurement table
+        table_group = self.create_table_group()
+        
+        # Build main layout
+        layout.addWidget(connection_group, 0, 0)
+        layout.addWidget(measurement_group, 0, 1)
+        layout.addWidget(info_button, 0, 2, Qt.AlignTop)
+        layout.addWidget(table_group, 1, 0, 1, 3)
+        
+        # Status bar
+        self.statusBar().showMessage('Bereit')
+
+    def show_info(self):
+        """Shows program information"""
+        info_text = """
+Smart Meter Ausleser
+
+Entwickelt von Tobias Baumann
+GitHub: https://github.com/RaptorSDS/
+Hilfe durch Claude AI 3.5
+
+Dieses Programm steht unter der GNU General Public License (GPL).
+
+Verwendete Bibliotheken:
+- smllib von spaceman_spiff (GNU License)
+- PyQt5 für die Benutzeroberfläche
+
+Copyright (C) 2024 Tobias Baumann
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+"""
+        QMessageBox.information(self, "Über Smart Meter Ausleser", info_text)
+
+    def create_connection_group(self):
+        """Creates the connection settings group"""
+        connection_group = QGroupBox("Verbindungseinstellungen")
+        connection_layout = QGridLayout()
+        
+        # COM port selection
+        self.port_label = QLabel("COM-Port:")
+        self.port_combo = QComboBox()
+        self.refresh_ports()
+        
+        # Baudrate
+        self.baud_label = QLabel("Baudrate:")
+        self.baud_combo = QComboBox()
+        self.baud_combo.addItems(['9600', '19200', '38400', '57600', '115200'])
+        self.baud_combo.setCurrentText('9600')
+        
+        # Refresh button
+        self.refresh_button = QPushButton("Ports aktualisieren")
+        self.refresh_button.clicked.connect(self.refresh_ports)
+        
+        # Connect/Disconnect button
+        self.connect_button = QPushButton("Verbinden")
+        self.connect_button.clicked.connect(self.toggle_connection)
+        
+        connection_layout.addWidget(self.port_label, 0, 0)
+        connection_layout.addWidget(self.port_combo, 0, 1)
+        connection_layout.addWidget(self.baud_label, 1, 0)
+        connection_layout.addWidget(self.baud_combo, 1, 1)
+        connection_layout.addWidget(self.refresh_button, 2, 0)
+        connection_layout.addWidget(self.connect_button, 2, 1)
+        connection_group.setLayout(connection_layout)
+        return connection_group
+    
+    def create_measurement_group(self):
+        """Creates the measurement settings group"""
+        measurement_group = QGroupBox("Messeinstellungen")
+        measurement_layout = QGridLayout()
+        
+        # Update interval
+        self.interval_label = QLabel("Aktualisierung:")
+        self.interval_combo = QComboBox()
+        self.interval_combo.addItems(['Einmalig', '1 Sekunde', '5 Sekunden', '15 Sekunden'])
+        self.interval_combo.currentTextChanged.connect(self.update_interval)
+        
+        # Export button
+        self.export_button = QPushButton("Letzte Minute exportieren")
+        self.export_button.clicked.connect(self.export_data)
+        
+        measurement_layout.addWidget(self.interval_label, 0, 0)
+        measurement_layout.addWidget(self.interval_combo, 0, 1)
+        measurement_layout.addWidget(self.export_button, 1, 0, 1, 2)
+        
+        measurement_group.setLayout(measurement_layout)
+        return measurement_group
+    
+    def create_table_group(self):
+        """Creates the measurement table group"""
+        table_group = QGroupBox("Messwerte")
+        table_layout = QVBoxLayout()
+        
+        # Table for measurements
+        self.table = QTableWidget()
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(['Zeitstempel', 'OBIS', 'Wert', 'Einheit'])
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(True)
+        
+        table_layout.addWidget(self.table)
+        table_group.setLayout(table_layout)
+        return table_group
+
+    def refresh_ports(self):
+        """Updates the list of available COM ports"""
+        self.port_combo.clear()
+        ports = serial.tools.list_ports.comports()
+        for port in ports:
+            self.port_combo.addItem(port.device)
+
+    def update_interval(self, text):
+        """Updates the measurement interval"""
+        if not self.serial_connection:
+            return
+            
+        self.read_timer.stop()
+        
+        if text == 'Einmalig':
+            self.read_serial_data()
+        else:
+            interval = {
+                '1 Sekunde': 1000,
+                '5 Sekunden': 5000,
+                '15 Sekunden': 15000
+            }.get(text, 1000)
+            self.read_timer.start(interval)
+
+    def toggle_connection(self):
+        """Establishes or terminates the connection"""
+        if self.serial_connection is None:
+            try:
+                port = self.port_combo.currentText()
+                baudrate = int(self.baud_combo.currentText())
+                
+                self.serial_connection = serial.Serial(
+                    port=port,
+                    baudrate=baudrate,
+                    bytesize=8,
+                    parity='N',
+                    stopbits=1,
+                    timeout=1
+                )
+                
+                self.connect_button.setText("Trennen")
+                self.statusBar().showMessage(f"Verbunden mit {port} bei {baudrate} Baud")
+                
+                # Start measurement according to selected interval
+                self.update_interval(self.interval_combo.currentText())
+                
+            except Exception as e:
+                self.show_error("Verbindungsfehler", f"Fehler beim Verbinden: {str(e)}")
+                self.serial_connection = None
+        else:
+            self.read_timer.stop()
+            self.serial_connection.close()
+            self.serial_connection = None
+            self.connect_button.setText("Verbinden")
+            self.statusBar().showMessage("Verbindung getrennt")
+            self.sml_reader = SmlStreamReader()  # Reset the reader
+
+    def read_serial_data(self):
+        """Reads data from the serial port and processes SML frames"""
+        if not self.serial_connection:
+            return
+            
+        try:
+            if self.serial_connection.in_waiting:
+                data = self.serial_connection.read(self.serial_connection.in_waiting)
+                self.sml_reader.add(data)
+                
+                # Try to read a frame
+                frame = self.sml_reader.get_frame()
+                if frame:
+                    self.process_frame(frame)
+                    
+        except Exception as e:
+            self.show_error("SML Fehler", f"Fehler beim Lesen der Daten: {str(e)}")
+
+    def process_frame(self, frame: SmlFrame):
+        """Processes an SML frame and displays the values in the table"""
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            measurement = {'timestamp': timestamp, 'values': []}
+            
+            try:
+                obis_values = frame.get_obis()
+            except Exception:
+                parsed_msgs = frame.parse_frame()
+                obis_values = parsed_msgs[1].message_body.val_list if len(parsed_msgs) > 1 else []
+            
+            # Clear table
+            self.table.setRowCount(0)
+            
+            # Display values in table
+            for entry in obis_values:
+                if hasattr(entry, 'value_entry'):
+                    val = entry.value_entry
+                    if hasattr(val, 'value'):
+                        # New row in table
+                        row = self.table.rowCount()
+                        self.table.insertRow(row)
+                        
+                        # OBIS code in different formats
+                        obis_code = str(entry.obj_name)
+                        if hasattr(entry.obj_name, 'obis_code'):
+                            obis_code = entry.obj_name.obis_code
+                        
+                        # Insert values
+                        timestamp_item = QTableWidgetItem(timestamp)
+                        obis_item = QTableWidgetItem(obis_code)
+                        value_item = QTableWidgetItem(str(val.value))
+                        unit_item = QTableWidgetItem(str(getattr(val, 'unit', '')))
+                        
+                        # Highlighting for specific OBIS codes
+                        if any(code in obis_code for code in self.highlight_codes):
+                            highlight_color = QColor(255, 255, 0, 70)  # Light yellow with transparency
+                            for item in [timestamp_item, obis_item, value_item, unit_item]:
+                                item.setBackground(highlight_color)
+                        
+                        self.table.setItem(row, 0, timestamp_item)
+                        self.table.setItem(row, 1, obis_item)
+                        self.table.setItem(row, 2, value_item)
+                        self.table.setItem(row, 3, unit_item)
+                        
+                        # Save values for export
+                        measurement['values'].append({
+                            'obis': obis_code,
+                            'value': str(val.value),
+                            'unit': str(getattr(val, 'unit', ''))
+                        })
+            
+            # Add measurement to history
+            self.measurement_history.append(measurement)
+            
+        except Exception as e:
+            self.show_error("Verarbeitungsfehler", str(e))
+
+    def export_data(self):
+        """Exports the measurements of the last minute to a text file"""
+        try:
+            file_name, _ = QFileDialog.getSaveFileName(
+                self,
+                "Messwerte speichern",
+                str(Path.home() / "messwerte.txt"),
+                "Text Dateien (*.txt)"
+            )
+            
+            if file_name:
+                with open(file_name, 'w', encoding='utf-8') as f:
+                    for measurement in self.measurement_history:
+                        f.write(f"Zeitstempel: {measurement['timestamp']}\n")
+                        for value in measurement['values']:
+                            f.write(f"  OBIS: {value['obis']}, "
+                                  f"Wert: {value['value']}, "
+                                  f"Einheit: {value['unit']}\n")
+                        f.write("-" * 50 + "\n")
+                
+                self.statusBar().showMessage(f"Daten erfolgreich nach {file_name} exportiert")
+                
+        except Exception as e:
+            self.show_error("Exportfehler", str(e))
+
+    def show_error(self, title: str, message: str):
+        """Shows an error dialog"""
+        self.statusBar().showMessage(f"Fehler: {message}")
+        QMessageBox.critical(self, title, message)
+
+def main():
+    app = QApplication(sys.argv)
+    window = SmartMeterReader()
+    window.show()
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()

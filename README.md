@@ -1,10 +1,16 @@
 Meter Reader 
 
 read all OBIS
+
 no UAC need 
-Windows 10/11 (tested)
+
+Windows 10/11 (tested) with HITACHI USB Adapter (should work with all USB to Serial "Optical" adapter )
+
 EXE version compile tkinter version (super small 10MB)
+
 use smllib from  spaceman_spiff  on PIP  ( GNU)
+
+
 
 
 table highlight , debug view of communication (hex) 

@@ -11,6 +11,8 @@ c.1.0
 
 use smllib from  spaceman_spiff  on PIP  ( GNU)
 
+EXE version compile tkinter version 
+
 make windows exe by auto_py_to_exe
 
 1. install phyton 3.12 ( windows store)

@@ -13,13 +13,15 @@ use smllib from  spaceman_spiff  on PIP  ( GNU)
 
 
 
-table highlight , debug view of communication (hex) 
-read OBIS Value scale and unit
+table highlight for most used value for electricity meter , 
 1.8.0
 2.8.0
 c.1.0
 0.2.0
 
+
+debug view of communication (hex) 
+read OBIS Value scale and unit
 
 
 

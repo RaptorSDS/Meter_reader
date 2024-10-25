@@ -1,17 +1,21 @@
 Meter Reader 
 
 read all OBIS
+no UAC need 
+Windows 10/11 (tested)
+EXE version compile tkinter version (super small 10MB)
+use smllib from  spaceman_spiff  on PIP  ( GNU)
 
-highlight 
+
+table highlight , debug view of communication (hex) 
+read OBIS Value scale and unit
 1.8.0
 2.8.0
 c.1.0
 0.2.0
 
 
-use smllib from  spaceman_spiff  on PIP  ( GNU)
 
-EXE version compile tkinter version 
 
 make windows exe by auto_py_to_exe
 
@@ -21,3 +25,4 @@ make windows exe by auto_py_to_exe
 4. use the webinterface to spec where the py script is
 5. compile
 6. use the result exe 
+

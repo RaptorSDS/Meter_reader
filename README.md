@@ -4,7 +4,7 @@ read all OBIS
 
 no UAC need 
 
-Windows 10/11 (tested) with HITACHI USB Adapter (should work with all USB to Serial "Optical" adapter )
+Windows 10/11 (tested) with HICHI USB Adapter (should work with all USB to Serial "Optical" adapter )
 
 EXE version compile tkinter version (super small 10MB)
 

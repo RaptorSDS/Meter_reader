@@ -8,7 +8,7 @@ Windows 10/11 (tested) with HICHI USB Adapter (should work with all USB to Seria
 
 EXE version compile tkinter version (super small 10MB)
 
-use smllib from  spaceman_spiff  on PIP  ( GNU)
+use smllib from  spaceman_spiff  on PIP  (  GNU General Public License v3 or later (GPLv3+) )
 
 
 

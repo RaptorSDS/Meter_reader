@@ -8,6 +8,10 @@ from collections import deque
 from serial.tools import list_ports
 import re  # Für Eingabevalidierung
 
+# Programmversion (wird im Fenstertitel und im Info-Fenster angezeigt;
+# der Release-Tag auf GitHub muss "v" + VERSION lauten, z.B. v1.1.0-beta)
+VERSION = "1.1.0-beta"
+
 # Zeitraum in Sekunden, der beim Speichern geschrieben wird
 SAVE_WINDOW_SECONDS = 60
 # Maximale Anzahl Zeilen im Debug-Fenster (ältere Zeilen werden entfernt)
@@ -19,7 +23,7 @@ HIGHLIGHT_OBIS = ["1.8.0", "2.8.0", "C.1.0", "0.2.0"]
 class SmartMeterReader:
     def __init__(self, root):
         self.root = root
-        self.root.title("Smart Meter Ausleser")
+        self.root.title(f"Smart Meter Ausleser {VERSION}")
         self.root.minsize(800, 600)
 
         self.serial_connection = None
@@ -157,7 +161,8 @@ class SmartMeterReader:
 
     def show_info(self):
         info_text = (
-            "Smart Meter Ausleser\n\n"
+            f"Smart Meter Ausleser\nVersion {VERSION}\n"
+            "Hinweis: Beta-Version, bitte Fehler auf GitHub melden\n\n"
             "Entwickelt von Tobias Baumann\n"
             "GitHub: https://github.com/RaptorSDS/\n"
             "Hilfe durch Claude AI 3.5 / ChatGPT 3o_high\n\n"

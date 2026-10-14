@@ -1,7 +1,11 @@
 # Baut die tkinter-Version als Windows-EXE mit PyInstaller.
 # - Bei jedem Push auf main (Änderungen im tkinter-Ordner) und bei manuellem Start:
 #   die EXE wird als Artefakt am Workflow-Lauf bereitgestellt.
-# - Bei einem Tag wie v1.0.0: die EXE wird zusätzlich als GitHub-Release veröffentlicht.
+# - Release veröffentlichen, auf zwei Wegen:
+#   a) Actions -> "EXE bauen (tkinter)" -> "Run workflow" mit Haken bei "Release erstellen".
+#      Der Tag wird automatisch als "v" + VERSION aus tkinter/Meter_reader.py angelegt.
+#   b) Einen Tag wie v1.1.0-beta pushen (muss zu VERSION im Programm passen).
+#   Versionen mit "beta" werden als Vorabversion (Pre-release) markiert.
 name: EXE bauen (tkinter)
 
 on:
@@ -13,6 +17,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Release mit der Version aus tkinter/Meter_reader.py erstellen"
+        type: boolean
+        default: false
 
 permissions:
   contents: write  # nötig, um ein Release anzulegen
@@ -32,22 +41,25 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Abhängigkeiten installieren
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
-
-      - name: Version prüfen (Tag muss zu VERSION im Programm passen)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Version aus dem Programm lesen
+        id: version
         shell: python
         run: |
           import os, re, sys
           code = open("Meter_reader.py", encoding="utf-8").read()
           version = re.search(r'^VERSION = "([^"]+)"', code, re.M).group(1)
-          tag = os.environ["GITHUB_REF_NAME"]
-          print(f"Tag: {tag}, VERSION im Programm: {version}")
-          if tag != f"v{version}":
-              sys.exit(f"Tag {tag} passt nicht zu VERSION {version} in tkinter/Meter_reader.py")
+          tag = f"v{version}"
+          print(f"VERSION im Programm: {version}")
+          # Bei einem Tag-Push muss der Tag zur Version im Programm passen
+          if os.environ["GITHUB_REF"].startswith("refs/tags/") and os.environ["GITHUB_REF_NAME"] != tag:
+              sys.exit(f"Tag {os.environ['GITHUB_REF_NAME']} passt nicht zu VERSION {version} in tkinter/Meter_reader.py")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"tag={tag}\n")
+
+      - name: Abhängigkeiten installieren
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
 
       - name: EXE bauen
         run: pyinstaller --onefile --windowed --name Meter_reader --collect-submodules smllib Meter_reader.py
@@ -55,15 +67,19 @@ jobs:
       - name: EXE als Artefakt hochladen
         uses: actions/upload-artifact@v4
         with:
-          name: Meter_reader-windows
+          name: Meter_reader-${{ steps.version.outputs.tag }}-windows
           path: tkinter/dist/Meter_reader.exe
 
       - name: Release veröffentlichen
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release
         uses: softprops/action-gh-release@v2
         with:
-          name: Smart Meter Ausleser ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Smart Meter Ausleser ${{ steps.version.outputs.tag }}
           files: tkinter/dist/Meter_reader.exe
-          # Versionen mit "beta" werden als Vorabversion (Pre-release) markiert
-          prerelease: ${{ contains(github.ref_name, 'beta') }}
+          prerelease: ${{ contains(steps.version.outputs.tag, 'beta') }}
           generate_release_notes: true
+          body: |
+            Windows-EXE der tkinter-Version. Einfach `Meter_reader.exe` herunterladen und starten.
+            ${{ contains(steps.version.outputs.tag, 'beta') && '**Hinweis: Beta-Version.** Bitte Fehler als Issue melden.' || '' }}

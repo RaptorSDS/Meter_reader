@@ -1,7 +1,6 @@
 # Meter Reader
 
 [![Build EXE](https://github.com/RaptorSDS/Meter_reader/actions/workflows/build-exe.yml/badge.svg)](https://github.com/RaptorSDS/Meter_reader/actions/workflows/build-exe.yml)
-[![Release](https://img.shields.io/github/v/release/RaptorSDS/Meter_reader?include_prereleases&label=release)](https://github.com/RaptorSDS/Meter_reader/releases)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 
 Reads all OBIS values from a smart meter (SML protocol) over an optical USB-to-serial adapter and shows them in a simple desktop window.
@@ -89,12 +88,6 @@ The EXE is created in `tkinter\dist\Meter_reader.exe`.
 pip install pyserial smllib
 python tkinter\Meter_reader.py
 ```
-
-## Releasing a new version (maintainers)
-
-1. Change `VERSION` in `tkinter/Meter_reader.py` (e.g. `"1.2.0"` or `"1.2.0-beta"`) and push to `main`.
-2. On GitHub, open **Actions → "EXE bauen (tkinter)" → "Run workflow"**, tick **"Release erstellen"** and start the run.
-3. The workflow builds the EXE and publishes a release with the tag `v` + `VERSION`. Versions containing `beta` are marked as pre-releases.
 
 ## Credits and license
 

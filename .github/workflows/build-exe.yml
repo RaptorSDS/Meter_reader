@@ -1,6 +1,8 @@
 # Baut die tkinter-Version als Windows-EXE mit PyInstaller.
 # - Bei jedem Push auf main (Änderungen im tkinter-Ordner) und bei manuellem Start:
 #   die EXE wird als Artefakt am Workflow-Lauf bereitgestellt.
+# - Bei jedem Pull Request auf main: Probebau, damit der Check "build" vor dem Merge
+#   grün sein muss. Ein PR veröffentlicht nie ein Release.
 # - Release veröffentlichen, auf zwei Wegen:
 #   a) Actions -> "EXE bauen (tkinter)" -> "Run workflow" mit Haken bei "Release erstellen".
 #      Der Tag wird automatisch als "v" + VERSION aus tkinter/Meter_reader.py angelegt.
@@ -16,6 +18,9 @@ on:
       - ".github/workflows/build-exe.yml"
     tags:
       - "v*"
+  # Ohne paths-Filter, damit der Pflicht-Check bei jedem PR gemeldet wird
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       release:

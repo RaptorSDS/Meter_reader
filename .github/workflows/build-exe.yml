@@ -7,7 +7,7 @@
 #   a) Actions -> "EXE bauen (tkinter)" -> "Run workflow" mit Haken bei "Release erstellen".
 #      Der Tag wird automatisch als "v" + VERSION aus tkinter/Meter_reader.py angelegt.
 #   b) Einen Tag wie v1.1.0-beta pushen (muss zu VERSION im Programm passen).
-#   Versionen mit "beta" werden als Vorabversion (Pre-release) markiert.
+#   Jedes Release wird als neueste Version ("Latest") angezeigt, Beta-Versionen erhalten einen Hinweis im Text.
 name: EXE bauen (tkinter)
 
 on:
@@ -83,7 +83,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Smart Meter Ausleser ${{ steps.version.outputs.tag }}
           files: tkinter/dist/Meter_reader.exe
-          prerelease: ${{ contains(steps.version.outputs.tag, 'beta') }}
+          # Kein Pre-release, damit GitHub das Release in der Seitenleiste als "Latest" anzeigt;
+          # Beta-Versionen erkennt man am Tag/Namen und am Hinweis im Text
+          prerelease: false
+          make_latest: true
           generate_release_notes: true
           body: |
             Windows-EXE der tkinter-Version. Einfach `Meter_reader.exe` herunterladen und starten.

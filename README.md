@@ -35,9 +35,7 @@ The tkinter version is built automatically by GitHub Actions as a single, small 
 2. Download `Meter_reader.exe` from the latest release.
 3. Start it, no installation needed.
 
-> **Note:** Versions marked *beta* are pre-releases. Please report problems as an [issue](https://github.com/RaptorSDS/Meter_reader/issues).
->
-> `meter_reader.exe` in the repository root is an older build. Use the release download for the current version.
+> **Note:** Versions marked *beta* are test versions. Please report problems as an [issue](https://github.com/RaptorSDS/Meter_reader/issues).
 
 ## Versions in this repository
 

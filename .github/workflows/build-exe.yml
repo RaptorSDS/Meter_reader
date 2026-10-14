@@ -1,0 +1,54 @@
+# Baut die tkinter-Version als Windows-EXE mit PyInstaller.
+# - Bei jedem Push auf main (Änderungen im tkinter-Ordner) und bei manuellem Start:
+#   die EXE wird als Artefakt am Workflow-Lauf bereitgestellt.
+# - Bei einem Tag wie v1.0.0: die EXE wird zusätzlich als GitHub-Release veröffentlicht.
+name: EXE bauen (tkinter)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tkinter/**"
+      - ".github/workflows/build-exe.yml"
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write  # nötig, um ein Release anzulegen
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        # Im tkinter-Ordner bauen, damit der Ordnername "tkinter" im Repo-Hauptverzeichnis
+        # nicht mit dem Python-Modul tkinter verwechselt wird
+        working-directory: tkinter
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhängigkeiten installieren
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: EXE bauen
+        run: pyinstaller --onefile --windowed --name Meter_reader --collect-submodules smllib Meter_reader.py
+
+      - name: EXE als Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: Meter_reader-windows
+          path: tkinter/dist/Meter_reader.exe
+
+      - name: Release veröffentlichen
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tkinter/dist/Meter_reader.exe
+          generate_release_notes: true

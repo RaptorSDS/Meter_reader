@@ -40,9 +40,9 @@ jobs:
         # nicht mit dem Python-Modul tkinter verwechselt wird
         working-directory: tkinter
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -70,14 +70,14 @@ jobs:
         run: pyinstaller --onefile --windowed --name Meter_reader --collect-submodules smllib Meter_reader.py
 
       - name: EXE als Artefakt hochladen
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Meter_reader-${{ steps.version.outputs.tag }}-windows
           path: tkinter/dist/Meter_reader.exe
 
       - name: Release veröffentlichen
         if: startsWith(github.ref, 'refs/tags/v') || inputs.release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
